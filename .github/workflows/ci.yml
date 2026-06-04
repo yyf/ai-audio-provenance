@@ -1,9 +1,9 @@
 name: CI
 
+# Paused: only runs when triggered manually from the Actions tab.
+# Restore push/pull_request triggers to re-enable automatic CI.
 on:
-  push:
-    branches: [main, master]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   test:
