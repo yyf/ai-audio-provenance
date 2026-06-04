@@ -18,6 +18,34 @@ class AssetStore:
     settings: Settings = field(default_factory=get_settings)
     _workspace: dict[str, Asset] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        self._load_registry()
+
+    def _registry_path(self) -> Path:
+        registry_dir = self.settings.project_root / ".audio_prov"
+        registry_dir.mkdir(parents=True, exist_ok=True)
+        return registry_dir / "workspace_registry.json"
+
+    def _load_registry(self) -> None:
+        path = self._registry_path()
+        if not path.exists():
+            return
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return
+        for item in data.get("assets", []):
+            asset = Asset.model_validate(item)
+            if Path(asset.path).is_file():
+                self._workspace[asset.asset_id] = asset
+
+    def _save_registry(self) -> None:
+        payload = {"assets": [a.model_dump() for a in self._workspace.values()]}
+        self._registry_path().write_text(
+            json.dumps(payload, indent=2, default=str),
+            encoding="utf-8",
+        )
+
     def _fixtures_catalog_path(self) -> Path:
         return self.settings.fixtures_path / "catalog.json"
 
@@ -68,7 +96,40 @@ class AssetStore:
             user_hints=user_hints or {},
         )
         self._workspace[asset_id] = asset
+        self._save_registry()
         return asset
+
+    def resolve_asset_ref(self, ref: str, auto_register: bool = True) -> Asset:
+        """Resolve asset_id, workspace filename, path, or content hash."""
+        ref = ref.strip()
+        if ref in self._workspace:
+            return self._workspace[ref]
+
+        # content hash lookup
+        if len(ref) >= 32 and all(c in "0123456789abcdef" for c in ref.lower()):
+            for asset in self._workspace.values():
+                if asset.content_hash == ref or asset.content_hash.startswith(ref):
+                    return asset
+
+        # filename or path under workspace
+        candidate_name = Path(ref).name
+        if auto_register:
+            ws = self.settings.workspace_path
+            for name in {ref, candidate_name}:
+                path = ws / name
+                if path.is_file() and path.suffix.lower() in AUDIO_EXTENSIONS:
+                    return self.register_workspace_file(name)
+
+        # by asset_id slug from filename
+        slug = slug_from_filename(candidate_name)
+        if slug in self._workspace:
+            return self._workspace[slug]
+
+        for asset in self._workspace.values():
+            if Path(asset.path).name.lower() == candidate_name.lower():
+                return asset
+
+        return self.get_asset(ref)
 
     def get_fixture_asset(self, fixture_id: str) -> Asset:
         catalog = self.load_fixtures_catalog()
@@ -108,7 +169,11 @@ class AssetStore:
             return self.get_fixture_asset(asset_id)
         except KeyError:
             pass
-        raise KeyError(f"Unknown asset: {asset_id}")
+        raise KeyError(
+            f"Unknown asset: {asset_id}. "
+            "Call register_workspace_file first or pass the workspace filename "
+            "(e.g. WOT_s.wav) to auto-register."
+        )
 
     def resolve_path(self, asset: Asset) -> Path:
         path = ensure_allowed(Path(asset.path), self.settings)

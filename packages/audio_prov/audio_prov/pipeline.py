@@ -33,9 +33,25 @@ class PipelineRunner:
         self.asset_store = asset_store or AssetStore(self.settings)
 
     def load_pipeline(self, pipeline_id: str) -> PipelineDefinition:
+        aliases = {
+            "analyze-ai-audio": "provenance-analysis@1",
+            "analyze_ai_audio": "provenance-analysis@1",
+            "real-world-stress-test": "real-world-analysis@1",
+            "real_world_stress_test": "real-world-analysis@1",
+            "provenance-analysis": "provenance-analysis@1",
+            "real-world-analysis": "real-world-analysis@1",
+            "inspect-only": "inspect-only@1",
+        }
+        pipeline_id = aliases.get(pipeline_id, pipeline_id)
         path = self.settings.pipelines_path / f"{pipeline_id.split('@')[0]}.yaml"
         if not path.exists():
-            raise FileNotFoundError(f"Pipeline not found: {pipeline_id}")
+            available = sorted(p.stem for p in self.settings.pipelines_path.glob("*.yaml"))
+            raise FileNotFoundError(
+                f"Pipeline not found: {pipeline_id}. "
+                f"Valid ids: inspect-only@1, provenance-analysis@1, real-world-analysis@1. "
+                f"YAML stems: {available}. "
+                "Note: analyze-ai-audio is an MCP prompt/tool name, not a pipeline_id."
+            )
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
         if data["id"] != pipeline_id:
             raise ValueError(f"Pipeline id mismatch: expected {pipeline_id}, got {data['id']}")

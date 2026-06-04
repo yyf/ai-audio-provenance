@@ -16,15 +16,37 @@ mcp = FastMCP(
     "audio-provenance",
     instructions=(
         "Deterministic audio provenance analysis for real-world AI audio in the local workspace. "
-        "Use list_workspace_files and register_workspace_file before analysis. "
-        "Never claim absent credentials prove synthetic origin. "
-        "Demo manifests use development keys only."
+        "Workflow: list_workspace_files → register_workspace_file → analyze_ai_audio (tool). "
+        "Do NOT pass MCP prompt names (analyze-ai-audio) to provenance_run — use the "
+        "analyze_ai_audio tool or pipeline_id provenance-analysis@1. "
+        "Never claim absent credentials prove synthetic origin."
     ),
 )
 
 _settings = get_settings()
-_runner = PipelineRunner(settings=_settings)
 _store = AssetStore(_settings)
+_runner = PipelineRunner(settings=_settings, asset_store=_store)
+
+# MCP prompt names are NOT pipeline IDs — map common mistakes.
+PIPELINE_ALIASES: dict[str, str] = {
+    "analyze-ai-audio": "provenance-analysis@1",
+    "analyze_ai_audio": "provenance-analysis@1",
+    "real-world-stress-test": "real-world-analysis@1",
+    "real_world_stress_test": "real-world-analysis@1",
+    "inspect-only": "inspect-only@1",
+    "provenance-analysis": "provenance-analysis@1",
+    "real-world-analysis": "real-world-analysis@1",
+}
+
+VALID_PIPELINE_IDS = (
+    "inspect-only@1",
+    "provenance-analysis@1",
+    "real-world-analysis@1",
+)
+
+
+def _resolve_pipeline_id(pipeline_id: str) -> str:
+    return PIPELINE_ALIASES.get(pipeline_id, pipeline_id)
 
 
 def _json(data: Any) -> str:
@@ -51,10 +73,17 @@ def list_fixtures() -> str:
     return _json(_store.list_fixtures())
 
 
+def _resolve_asset(ref: str) -> Asset:
+    return _store.resolve_asset_ref(ref)
+
+
 @mcp.tool()
-def inspect_audio(asset_id: str) -> str:
-    """Inspect structural properties (codec, duration, hash) for a registered asset."""
-    asset = _store.get_asset(asset_id)
+def inspect_audio(asset_ref: str) -> str:
+    """Inspect structural properties (codec, duration, hash).
+
+    asset_ref: asset_id (e.g. wot_s), workspace filename (e.g. WOT_s.wav), or path.
+    """
+    asset = _resolve_asset(asset_ref)
     path = _store.resolve_path(asset)
     plugin = _runner.registry.get_inspect("inspect.ffprobe")
     tags = _runner.registry.get_metadata("metadata.tags")
@@ -67,26 +96,69 @@ def inspect_audio(asset_id: str) -> str:
 
 
 @mcp.tool()
-def verify_provenance(asset_id: str) -> str:
-    """Verify credentials (demo sidecar + C2PA if available) for an asset."""
-    return _json({"results": _runner.verify_asset(asset_id)})
+def verify_provenance(asset_ref: str) -> str:
+    """Verify credentials (demo sidecar + C2PA if available).
+
+    asset_ref: asset_id, workspace filename, or path.
+    """
+    asset = _resolve_asset(asset_ref)
+    return _json({"asset_id": asset.asset_id, "results": _runner.verify_asset(asset.asset_id)})
 
 
 @mcp.tool()
-def simulate_distribution(asset_id: str, preset: str = "aac128") -> str:
+def simulate_distribution(asset_ref: str, preset: str = "aac128") -> str:
     """Apply a distribution-style transcode preset to an asset."""
-    return _json(_runner.simulate_distribution(asset_id, preset))
+    asset = _resolve_asset(asset_ref)
+    return _json(_runner.simulate_distribution(asset.asset_id, preset))
+
+
+@mcp.tool()
+def list_pipelines() -> str:
+    """List valid pipeline_id values for provenance_run (not MCP prompt names)."""
+    return _json({"pipeline_ids": list(VALID_PIPELINE_IDS), "aliases": PIPELINE_ALIASES})
 
 
 @mcp.tool()
 def provenance_run(
     pipeline_id: str,
-    asset_id: str,
+    asset_ref: str,
     preset: str | None = None,
 ) -> str:
-    """Run a provenance pipeline (e.g. provenance-analysis@1, real-world-analysis@1)."""
+    """Run a provenance pipeline.
+
+    Valid pipeline_id values ONLY:
+    - provenance-analysis@1 (inspect + verify + report)
+    - real-world-analysis@1 (inspect + verify + transcode + verify + report)
+    - inspect-only@1
+
+    NOT valid: analyze-ai-audio (that is an MCP prompt name — use analyze_ai_audio tool).
+    """
+    resolved = _resolve_pipeline_id(pipeline_id)
+    asset = _resolve_asset(asset_ref)
     options = {"preset": preset} if preset else {}
-    audit, summary = _runner.run(pipeline_id, asset_id, options=options)
+    audit, summary = _runner.run(resolved, asset.asset_id, options=options)
+    return _json({"audit": audit.model_dump(), "summary": summary})
+
+
+@mcp.tool()
+def analyze_ai_audio(asset_ref: str) -> str:
+    """Run full provenance analysis (provenance-analysis@1).
+
+    asset_ref: asset_id (e.g. wot_s), workspace filename (e.g. WOT_s.wav), or path.
+    Auto-registers workspace files if needed.
+    """
+    asset = _resolve_asset(asset_ref)
+    audit, summary = _runner.run("provenance-analysis@1", asset.asset_id)
+    return _json({"audit": audit.model_dump(), "summary": summary})
+
+
+@mcp.tool()
+def real_world_stress_test(asset_ref: str, preset: str = "aac128") -> str:
+    """Run distribution stress test (real-world-analysis@1)."""
+    asset = _resolve_asset(asset_ref)
+    audit, summary = _runner.run(
+        "real-world-analysis@1", asset.asset_id, options={"preset": preset}
+    )
     return _json({"audit": audit.model_dump(), "summary": summary})
 
 
@@ -127,22 +199,21 @@ def claims_schema_resource() -> str:
 
 
 @mcp.prompt()
-def analyze_ai_audio(asset_id: str) -> str:
-    """Run provenance-analysis@1 and summarize structural + verified blocks."""
+def analyze_ai_audio_prompt(asset_id: str) -> str:
+    """Summarize a completed analyze_ai_audio tool run."""
     return (
-        f"Run provenance_run with pipeline_id='provenance-analysis@1' and asset_id='{asset_id}'. "
-        "Then summarize results in a markdown table separating Structural, Verified, and Inferred. "
-        "If verified is absent, explain that credentials are missing — "
-        "not proof of synthetic origin."
+        f"Call the analyze_ai_audio tool with asset_id='{asset_id}' (NOT provenance_run). "
+        "Then summarize results in a markdown table: Structural, Verified, Simulated, Inferred. "
+        "If verified is absent, credentials are missing — not proof of synthetic origin."
     )
 
 
 @mcp.prompt()
-def real_world_stress_test(asset_id: str, preset: str = "aac128") -> str:
-    """Run real-world-analysis@1 with distribution stress preset."""
+def real_world_stress_test_prompt(asset_id: str, preset: str = "aac128") -> str:
+    """Summarize a completed real_world_stress_test tool run."""
     return (
-        f"Run provenance_run with pipeline_id='real-world-analysis@1', asset_id='{asset_id}', "
-        f"preset='{preset}'. Compare verified status before and after simulated distribution."
+        f"Call the real_world_stress_test tool with asset_id='{asset_id}' and preset='{preset}'. "
+        "Compare verified status before and after simulated distribution."
     )
 
 

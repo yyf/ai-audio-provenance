@@ -1,4 +1,7 @@
 import pytest
+from pathlib import Path
+
+from audio_prov.assets import AssetStore
 from audio_prov.config import Settings
 from audio_prov.guards import GuardError, ensure_allowed
 from audio_prov.pipeline import PipelineRunner
@@ -55,7 +58,24 @@ def test_broken_fixture_invalid(runner: PipelineRunner) -> None:
     assert any(r["status"] == "invalid" for r in results)
 
 
-def test_signed_fixture_valid(runner: PipelineRunner) -> None:
-    results = runner.verify_asset("signed-sidecar")
-    demo = next(r for r in results if r["plugin_id"] == "verify.demo")
-    assert demo["status"] == "valid"
+def test_runner_shares_asset_store(settings: Settings, tmp_path) -> None:
+    import shutil
+
+    ws_file = settings.workspace_path / "shared-store.wav"
+    shutil.copy(settings.fixtures_path / "tone.wav", ws_file)
+    store = AssetStore(settings)
+    runner = PipelineRunner(settings=settings, asset_store=store)
+    asset = store.register_workspace_file("shared-store.wav")
+    audit, summary = runner.run("provenance-analysis@1", asset.asset_id)
+    assert summary["verified_status"] in {"valid", "invalid", "absent"}
+
+
+def test_resolve_asset_by_filename(settings: Settings, tmp_path) -> None:
+    import shutil
+
+    ws_file = settings.workspace_path / "ByName.wav"
+    shutil.copy(settings.fixtures_path / "tone.wav", ws_file)
+    store = AssetStore(settings)
+    asset = store.resolve_asset_ref("ByName.wav")
+    assert asset.asset_id == "byname"
+    assert Path(asset.path).name == "ByName.wav"

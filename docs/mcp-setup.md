@@ -18,33 +18,53 @@ python scripts/generate_fixtures.py
 
 ## Claude Desktop
 
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+### One-time wiring (macOS)
 
-```json
-{
-  "mcpServers": {
-    "audio-provenance": {
-      "command": "/ABS/PATH/ai-audio-provenance/.venv/bin/audio-prov-mcp",
-      "env": {
-        "AUDIO_PROV_ROOT": "/ABS/PATH/ai-audio-provenance"
-      }
-    }
-  }
-}
+From the repo root (merges into your existing `claude_desktop_config.json`):
+
+```bash
+python scripts/wire_claude_desktop.py
 ```
 
-Restart Claude Desktop after saving.
+Or paste manually from [examples/claude_desktop_config.json](../examples/claude_desktop_config.json).
 
-## Analyze real-world AI audio
+**Restart Claude Desktop** after saving. Confirm **audio-provenance** appears under MCP tools (hammer icon).
 
-1. Copy your file (MP3/M4A/WAV) into `workspace/`
-2. In Claude, try:
+The config sets `AUDIO_PROV_ROOT` and full paths to Homebrew `ffmpeg` / `ffprobe` so Claude’s sandboxed MCP process can analyze audio.
 
-> Use `list_workspace_files`, then `register_workspace_file` for my file, then run the `analyze-ai-audio` prompt.
+### Test with real AI-generated audio
 
-For distribution stress:
+1. Export or download your file (Suno, Udio, TTS, etc.) — **MP3/M4A/WAV**.
+2. Copy into `workspace/`:
 
-> Run the `real-world-stress-test` prompt with preset `aac128`.
+   ```bash
+   cp ~/Downloads/my-ai-track.mp3 workspace/
+   ```
+
+3. In Claude, send:
+
+   > Use audio-provenance MCP: `list_workspace_files`, `register_workspace_file` for `my-ai-track.mp3`, then call **`analyze_ai_audio`** with that asset_id. Summarize structural and verified blocks.
+
+4. For transcode survival:
+
+   > Call **`real_world_stress_test`** on the same asset_id with preset `aac128`.
+
+5. Read outputs on disk (optional):
+
+   ```bash
+   ls -lt runs/*/summary.md | head -1
+   ```
+
+Reports land in `runs/<uuid>/` (`report.json`, `summary.md`, `run.json`).
+
+### Troubleshooting
+
+| Issue | Fix |
+|-------|-----|
+| MCP server not listed | Restart Claude; check `~/Library/Logs/Claude/mcp*.log` |
+| ffprobe not found | Re-run `wire_claude_desktop.py` (sets Homebrew paths) |
+| Path not allowed | File must be under `workspace/` |
+| verify always absent | Normal for most exports; install `c2patool` for C2PA |
 
 ## CLI (without MCP)
 

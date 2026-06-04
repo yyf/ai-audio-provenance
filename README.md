@@ -13,6 +13,13 @@ audio-prov run provenance-analysis@1 --asset tone-wav
 
 See [docs/mcp-setup.md](docs/mcp-setup.md) for Claude Desktop configuration.
 
+```bash
+python scripts/wire_claude_desktop.py   # macOS: merge MCP config, then restart Claude
+cp ~/Downloads/your-ai-track.mp3 workspace/
+```
+
+In Claude: use MCP `list_workspace_files` → `register_workspace_file` → tool **`analyze_ai_audio`** (not `provenance_run` with prompt name).
+
 ## Features
 
 - **Workspace-first:** analyze your own MP3/M4A/WAV exports in `workspace/`
