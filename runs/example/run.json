@@ -1,0 +1,80 @@
+{
+  "run_id": "deb00d52-25d7-453c-b1e1-0eed4ce7654b",
+  "pipeline_id": "provenance-analysis@1",
+  "asset_id": "signed-sidecar",
+  "steps": [
+    {
+      "plugin_id": "inspect.ffprobe",
+      "plugin_version": "0.1.0",
+      "input_hash": "3e40d196d8e45cc2d9d2e2ee2685fa0cd4cc977373922926c133ec4d7642c1ef",
+      "output": {
+        "duration_sec": 0.5,
+        "sample_rate": 44100,
+        "channels": 1,
+        "codec": "pcm_s16le",
+        "bit_rate": 705600,
+        "format_name": "wav",
+        "format_profile": "pcm_s16le_706k",
+        "content_hash": "3e40d196d8e45cc2d9d2e2ee2685fa0cd4cc977373922926c133ec4d7642c1ef"
+      },
+      "duration_ms": 54,
+      "error": null
+    },
+    {
+      "plugin_id": "metadata.tags",
+      "plugin_version": "0.1.0",
+      "input_hash": "3e40d196d8e45cc2d9d2e2ee2685fa0cd4cc977373922926c133ec4d7642c1ef",
+      "output": {
+        "tags": {}
+      },
+      "duration_ms": 53,
+      "error": null
+    },
+    {
+      "plugin_id": "verify.all",
+      "plugin_version": "aggregate",
+      "input_hash": "3e40d196d8e45cc2d9d2e2ee2685fa0cd4cc977373922926c133ec4d7642c1ef",
+      "output": {
+        "results": [
+          {
+            "plugin_id": "verify.demo",
+            "plugin_version": "0.1.0",
+            "status": "valid",
+            "details": {
+              "issuer": "audio-prov-demo",
+              "claims": {
+                "synthetic": true,
+                "generator": "fixture-generator",
+                "content_id": "signed-sidecar"
+              },
+              "signing_note": "demo-development-key"
+            }
+          },
+          {
+            "plugin_id": "verify.c2pa",
+            "plugin_version": "0.1.0",
+            "status": "absent",
+            "details": {
+              "reason": "c2patool_not_installed",
+              "hint": "Install c2patool or set path: c2patool"
+            }
+          }
+        ]
+      },
+      "duration_ms": 1,
+      "error": null
+    },
+    {
+      "plugin_id": "report.default",
+      "plugin_version": "0.1.0",
+      "input_hash": "3e40d196d8e45cc2d9d2e2ee2685fa0cd4cc977373922926c133ec4d7642c1ef",
+      "output": {
+        "report_schema_version": "1.0"
+      },
+      "duration_ms": 0,
+      "error": null
+    }
+  ],
+  "report_path": null,
+  "summary_path": null
+}

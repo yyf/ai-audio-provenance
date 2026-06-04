@@ -1,0 +1,10 @@
+{
+  "manifest_version": "demo-1",
+  "content_hash": "f12813b0acdf64c82579750ecf75fda978c9b10b23307e9cb9200bb54de31df0",
+  "claims": {
+    "synthetic": true,
+    "generator": "fixture-generator",
+    "content_id": "broken-sig"
+  },
+  "issuer": "audio-prov-demo"
+}

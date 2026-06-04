@@ -1,0 +1,10 @@
+id: real-world-analysis@1
+steps:
+  - plugin: inspect.ffprobe
+  - plugin: metadata.tags
+  - plugin: verify.all
+  - plugin: transform.ffmpeg
+    params:
+      preset: aac128
+  - plugin: verify.all
+  - plugin: report.default

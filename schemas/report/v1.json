@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-provenance.local/schemas/report/v1.json",
+  "title": "AudioProvReportV1",
+  "type": "object",
+  "required": ["report_schema_version", "asset_id", "structural", "verified"],
+  "properties": {
+    "report_schema_version": { "type": "string" },
+    "asset_id": { "type": "string" },
+    "content_hash": { "type": "string" },
+    "pipeline_id": { "type": "string" },
+    "run_id": { "type": "string" },
+    "structural": { "type": "object" },
+    "verified": { "type": "object" },
+    "simulated": { "type": ["object", "null"] },
+    "inferred": { "type": ["object", "null"] },
+    "user_hints": { "type": "object" },
+    "disclaimer": { "type": "string" }
+  }
+}

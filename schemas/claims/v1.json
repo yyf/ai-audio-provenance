@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://audio-provenance.local/schemas/claims/v1.json",
+  "title": "AudioProvClaimsV1",
+  "type": "object",
+  "properties": {
+    "synthetic": { "type": "boolean" },
+    "hybrid_type": { "type": "string" },
+    "generator": { "type": "string" },
+    "content_id": { "type": "string" }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,5 @@
+id: inspect-only@1
+steps:
+  - plugin: inspect.ffprobe
+  - plugin: metadata.tags
+  - plugin: report.default

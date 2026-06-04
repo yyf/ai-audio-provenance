@@ -1,0 +1,27 @@
+{
+  "tone-wav": {
+    "file": "tone.wav",
+    "description": "Structural baseline WAV",
+    "format_profile": "pcm_s16le"
+  },
+  "signed-sidecar": {
+    "file": "signed-sidecar.wav",
+    "description": "Valid demo sidecar manifest",
+    "format_profile": "pcm_s16le"
+  },
+  "broken-sig": {
+    "file": "broken-sig.wav",
+    "description": "Invalid demo sidecar signature",
+    "format_profile": "pcm_s16le"
+  },
+  "no-creds-wav": {
+    "file": "tone.wav",
+    "description": "Typical export without credentials (alias tone-wav)",
+    "format_profile": "pcm_s16le"
+  },
+  "tone-mp3": {
+    "file": "tone.mp3",
+    "description": "Compressed MP3 inspect fixture",
+    "format_profile": "mp3_128k"
+  }
+}

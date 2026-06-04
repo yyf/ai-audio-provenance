@@ -1,0 +1,10 @@
+{
+  "manifest_version": "demo-1",
+  "content_hash": "3e40d196d8e45cc2d9d2e2ee2685fa0cd4cc977373922926c133ec4d7642c1ef",
+  "claims": {
+    "synthetic": true,
+    "generator": "fixture-generator",
+    "content_id": "signed-sidecar"
+  },
+  "issuer": "audio-prov-demo"
+}

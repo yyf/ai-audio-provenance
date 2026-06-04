@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "audio-provenance": {
+      "command": "/absolute/path/to/ai-audio-provenance/.venv/bin/audio-prov-mcp",
+      "args": [],
+      "env": {
+        "AUDIO_PROV_ROOT": "/absolute/path/to/ai-audio-provenance"
+      }
+    }
+  }
+}
