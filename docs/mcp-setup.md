@@ -26,11 +26,11 @@ From the repo root (merges into your existing `claude_desktop_config.json`):
 python scripts/wire_claude_desktop.py
 ```
 
-Or paste manually from [examples/claude_desktop_config.json](../examples/claude_desktop_config.json).
+Or paste manually from [examples/claude_desktop_config.json](../examples/claude_desktop_config.json) (replace `/path/to/ai-audio-provenance` with your clone path).
 
 **Restart Claude Desktop** after saving. Confirm **audio-provenance** appears under MCP tools (hammer icon).
 
-The config sets `AUDIO_PROV_ROOT` and full paths to Homebrew `ffmpeg` / `ffprobe` so Claude’s sandboxed MCP process can analyze audio.
+`wire_claude_desktop.py` sets `AUDIO_PROV_ROOT` from the repo and, on macOS, Homebrew `ffmpeg` / `ffprobe` paths when present.
 
 ### Test with real AI-generated audio
 

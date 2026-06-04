@@ -1,10 +1,13 @@
 {
   "mcpServers": {
     "audio-provenance": {
-      "command": "/absolute/path/to/ai-audio-provenance/.venv/bin/audio-prov-mcp",
+      "command": "/path/to/ai-audio-provenance/.venv/bin/audio-prov-mcp",
       "args": [],
       "env": {
-        "AUDIO_PROV_ROOT": "/absolute/path/to/ai-audio-provenance"
+        "AUDIO_PROV_ROOT": "/path/to/ai-audio-provenance",
+        "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+        "AUDIO_PROV_FFMPEG": "/opt/homebrew/bin/ffmpeg",
+        "AUDIO_PROV_FFPROBE": "/opt/homebrew/bin/ffprobe"
       }
     }
   }
