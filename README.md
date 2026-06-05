@@ -2,6 +2,8 @@
 
 Open-source **audio provenance** infrastructure with an MCP adapter so AI assistants can run auditable provenance analysis on **real-world AI audio** (local workspace files): inspect → verify credentials → distribution-stress → report.
 
+![Claude Desktop demo](docs/demo/demo.gif)
+
 ## Quick start
 
 ```bash
