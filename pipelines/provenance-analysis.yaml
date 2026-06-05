@@ -3,4 +3,5 @@ steps:
   - plugin: inspect.ffprobe
   - plugin: metadata.tags
   - plugin: verify.all
+  - plugin: detect.all
   - plugin: report.default

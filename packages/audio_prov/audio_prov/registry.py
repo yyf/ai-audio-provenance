@@ -7,6 +7,8 @@ from typing import Any, Protocol
 from audio_prov.config import Settings, get_settings
 from audio_prov.models import (
     Asset,
+    DetectResult,
+    InferredBlock,
     InspectResult,
     ProvenanceReport,
     TagResult,
@@ -30,6 +32,7 @@ class PipelineContext:
     verify_before: list[VerifyResult] = field(default_factory=list)
     verify_after: list[VerifyResult] = field(default_factory=list)
     transform_result: TransformResult | None = None
+    inferred_results: list[DetectResult] = field(default_factory=list)
     current_path: Path | None = None
     report: ProvenanceReport | None = None
 
@@ -75,6 +78,18 @@ class ReportPlugin(Protocol):
     def build(self, ctx: PipelineContext) -> ProvenanceReport: ...
 
 
+class DetectPlugin(Protocol):
+    id: str
+    version: str
+
+    def detect(
+        self,
+        path: Path,
+        tags: TagResult | None = None,
+        user_hints: dict | None = None,
+    ) -> DetectResult: ...
+
+
 class PluginRegistry:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
@@ -83,6 +98,7 @@ class PluginRegistry:
         self._verify: dict[str, VerifyPlugin] = {}
         self._transform: dict[str, TransformPlugin] = {}
         self._report: dict[str, ReportPlugin] = {}
+        self._detect: dict[str, DetectPlugin] = {}
 
     def register_inspect(self, plugin: InspectPlugin) -> None:
         self._inspect[plugin.id] = plugin
@@ -99,6 +115,9 @@ class PluginRegistry:
     def register_report(self, plugin: ReportPlugin) -> None:
         self._report[plugin.id] = plugin
 
+    def register_detect(self, plugin: DetectPlugin) -> None:
+        self._detect[plugin.id] = plugin
+
     def get_inspect(self, plugin_id: str) -> InspectPlugin:
         return self._inspect[_short_id(plugin_id)]
 
@@ -114,6 +133,9 @@ class PluginRegistry:
     def get_report(self, plugin_id: str) -> ReportPlugin:
         return self._report[_short_id(plugin_id)]
 
+    def get_detect(self, plugin_id: str) -> DetectPlugin:
+        return self._detect[_short_id(plugin_id)]
+
     def list_capabilities(self) -> dict[str, Any]:
         return {
             "inspect": {k: v.version for k, v in self._inspect.items()},
@@ -121,6 +143,7 @@ class PluginRegistry:
             "verify": {k: v.version for k, v in self._verify.items()},
             "transform": {k: v.version for k, v in self._transform.items()},
             "report": {k: v.version for k, v in self._report.items()},
+            "detect": {k: v.version for k, v in self._detect.items()},
         }
 
 
@@ -140,7 +163,20 @@ def merge_verified(results: list[VerifyResult]) -> VerifiedBlock:
     return VerifiedBlock(status=status, results=results)
 
 
+def merge_inferred(results: list[DetectResult]) -> InferredBlock | None:
+    if not results:
+        return None
+    if any(r.signals for r in results):
+        status = "signal"
+    elif any(r.status == "stub" for r in results):
+        status = "stub"
+    else:
+        status = "absent"
+    return InferredBlock(status=status, results=results)
+
+
 def default_registry(settings: Settings | None = None) -> PluginRegistry:
+    from audio_prov.plugins.detect_stub import StubDetectPlugin
     from audio_prov.plugins.inspect_ffprobe import FfprobeInspectPlugin
     from audio_prov.plugins.metadata_tags import FfprobeMetadataPlugin
     from audio_prov.plugins.report_default import DefaultReportPlugin
@@ -156,4 +192,5 @@ def default_registry(settings: Settings | None = None) -> PluginRegistry:
     registry.register_verify(C2paVerifyPlugin(settings))
     registry.register_transform(FfmpegTransformPlugin(settings))
     registry.register_report(DefaultReportPlugin())
+    registry.register_detect(StubDetectPlugin())
     return registry

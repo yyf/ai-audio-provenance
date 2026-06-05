@@ -63,6 +63,8 @@ Reports land in `runs/<uuid>/` (`report.json`, `summary.md`, `run.json`).
 |-------|-----|
 | MCP server not listed | Restart Claude; check `~/Library/Logs/Claude/mcp*.log` |
 | ffprobe not found | Re-run `wire_claude_desktop.py` (sets Homebrew paths) |
+| c2patool not installed | `brew install c2patool`, re-run `wire_claude_desktop.py`, restart Claude |
+| C2PA shows absent | Normal for most exports; means no embedded manifest, not “not installed” |
 | Path not allowed | File must be under `workspace/` |
 | verify always absent | Normal for most exports; install `c2patool` for C2PA |
 

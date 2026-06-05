@@ -6,9 +6,13 @@ from typing import Any
 from audio_prov import __version__ as core_version
 from audio_prov.assets import AssetStore
 from audio_prov.audit import load_run
+from audio_prov.batch import batch_analyze_workspace
 from audio_prov.config import get_settings
+from audio_prov.errors import check_setup
+from audio_prov.models import Asset
 from audio_prov.pipeline import PipelineRunner
 from audio_prov.plugins.transform_ffmpeg import list_presets
+from audio_prov.plugins.verify_demo import sign_demo_manifest
 from audio_prov.registry import default_registry
 from mcp.server.fastmcp import FastMCP
 
@@ -53,6 +57,23 @@ def _json(data: Any) -> str:
     return json.dumps(data, indent=2, default=str)
 
 
+def _resolve_asset(ref: str) -> Asset:
+    return _store.resolve_asset_ref(ref)
+
+
+@mcp.tool()
+def check_environment() -> str:
+    """Check ffmpeg/ffprobe (and optional c2patool) before running analysis."""
+    return _json(check_setup(_settings))
+
+
+@mcp.tool()
+def describe_pipeline(pipeline_id: str) -> str:
+    """Describe pipeline steps for a given pipeline_id (e.g. provenance-analysis@1)."""
+    resolved = _resolve_pipeline_id(pipeline_id)
+    return _json(_runner.describe_pipeline(resolved))
+
+
 @mcp.tool()
 def list_workspace_files(glob_pattern: str | None = None) -> str:
     """List audio files in the configured workspace directory."""
@@ -71,10 +92,6 @@ def register_workspace_file(filename: str, user_hints_json: str | None = None) -
 def list_fixtures() -> str:
     """List committed test fixtures available for regression demos."""
     return _json(_store.list_fixtures())
-
-
-def _resolve_asset(ref: str) -> Asset:
-    return _store.resolve_asset_ref(ref)
 
 
 @mcp.tool()
@@ -163,6 +180,41 @@ def real_world_stress_test(asset_ref: str, preset: str = "aac128") -> str:
 
 
 @mcp.tool()
+def analyze_workspace(
+    pipeline_id: str = "provenance-analysis@1",
+    preset: str | None = None,
+    glob_pattern: str | None = None,
+) -> str:
+    """Analyze every audio file in workspace/ (batch provenance run)."""
+    return _json(
+        batch_analyze_workspace(
+            _store,
+            _runner,
+            pipeline_id=pipeline_id,
+            preset=preset,
+            glob_pattern=glob_pattern,
+        )
+    )
+
+
+@mcp.tool()
+def sign_demo_sidecar(filename: str, claims_json: str = '{"synthetic": true}') -> str:
+    """Write a demo Ed25519 sidecar manifest for a workspace file (dev keys only)."""
+    asset = _resolve_asset(filename)
+    path = _store.resolve_path(asset)
+    claims = json.loads(claims_json)
+    sign_demo_manifest(path, claims)
+    return _json(
+        {
+            "asset_id": asset.asset_id,
+            "filename": filename,
+            "path": str(path),
+            "claims": claims,
+        }
+    )
+
+
+@mcp.tool()
 def get_run(run_id: str) -> str:
     """Load audit log and report paths for a prior pipeline run."""
     return _json(load_run(_settings, run_id))
@@ -179,6 +231,11 @@ def capabilities_resource() -> str:
             "pipelines": sorted(p.name for p in _settings.pipelines_path.glob("*.yaml")),
         }
     )
+
+
+@mcp.resource("config://pipelines")
+def pipelines_resource() -> str:
+    return _json(_runner.list_pipeline_descriptions())
 
 
 @mcp.resource("config://transform-presets")

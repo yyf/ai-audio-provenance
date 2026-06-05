@@ -8,7 +8,9 @@ Open-source **audio provenance** infrastructure with an MCP adapter so AI assist
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e packages/audio_prov -e packages/audio_prov_mcp
 python scripts/generate_fixtures.py
+audio-prov check
 audio-prov run provenance-analysis@1 --asset tone-wav
+audio-prov batch --json   # all files in workspace/
 ```
 
 See [docs/mcp-setup.md](docs/mcp-setup.md) for Claude Desktop configuration.
@@ -23,7 +25,7 @@ In Claude: use MCP `list_workspace_files` → `register_workspace_file` → tool
 ## Features
 
 - **Workspace-first:** analyze your own MP3/M4A/WAV exports in `workspace/`
-- **Multi-signal reports:** structural, verified, simulated (and inferred later)
+- **Multi-signal reports:** structural, verified, simulated, inferred (tag hints via stub detector)
 - **MCP tools:** `register_workspace_file`, `provenance_run`, `verify_provenance`, etc.
 - **Distribution presets:** `aac128`, `aac64`, `mp3_128`, `loudnorm_-14`, `copy`
 - **Pluggable verify:** demo sidecar manifests + optional C2PA via `c2patool`

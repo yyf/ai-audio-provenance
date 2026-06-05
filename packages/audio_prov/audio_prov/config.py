@@ -29,6 +29,7 @@ class Settings:
     c2patool_path: str = "c2patool"
     default_transform_preset: str = "aac128"
     verify_plugins: tuple[str, ...] = ("verify.demo", "verify.c2pa")
+    detect_plugins: tuple[str, ...] = ("detect.stub",)
 
     @property
     def workspace_path(self) -> Path:
@@ -53,6 +54,8 @@ class Settings:
 
 def get_settings() -> Settings:
     root = find_project_root()
+    detect_raw = os.getenv("AUDIO_PROV_DETECT_PLUGINS", "detect.stub")
+    detect_plugins = tuple(p.strip() for p in detect_raw.split(",") if p.strip())
     return Settings(
         project_root=root,
         workspace_dir=os.getenv("AUDIO_PROV_WORKSPACE_DIR", "workspace"),
@@ -63,4 +66,5 @@ def get_settings() -> Settings:
         ffprobe_path=os.getenv("AUDIO_PROV_FFPROBE", "ffprobe"),
         c2patool_path=os.getenv("AUDIO_PROV_C2PATOOL", "c2patool"),
         default_transform_preset=os.getenv("AUDIO_PROV_DEFAULT_PRESET", "aac128"),
+        detect_plugins=detect_plugins,
     )

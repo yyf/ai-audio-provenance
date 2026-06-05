@@ -6,7 +6,7 @@ from audio_prov.models import (
     StructuralBlock,
     TagResult,
 )
-from audio_prov.registry import PipelineContext, merge_verified
+from audio_prov.registry import PipelineContext, merge_inferred, merge_verified
 
 
 class DefaultReportPlugin:
@@ -41,6 +41,6 @@ class DefaultReportPlugin:
             structural=structural,
             verified=verified,
             simulated=simulated,
-            inferred=None,
+            inferred=merge_inferred(ctx.inferred_results),
             user_hints=ctx.asset.user_hints,
         )

@@ -7,4 +7,5 @@ steps:
     params:
       preset: aac128
   - plugin: verify.all
+  - plugin: detect.all
   - plugin: report.default

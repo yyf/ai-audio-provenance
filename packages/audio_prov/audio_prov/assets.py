@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from audio_prov.config import Settings, get_settings
+from audio_prov.errors import AssetNotFoundError
 from audio_prov.guards import ensure_allowed, ensure_file_size, resolve_under_root
 from audio_prov.models import Asset, OriginContext
 from audio_prov.util import sha256_file, slug_from_filename
@@ -169,11 +170,7 @@ class AssetStore:
             return self.get_fixture_asset(asset_id)
         except KeyError:
             pass
-        raise KeyError(
-            f"Unknown asset: {asset_id}. "
-            "Call register_workspace_file first or pass the workspace filename "
-            "(e.g. WOT_s.wav) to auto-register."
-        )
+        raise AssetNotFoundError(asset_id)
 
     def resolve_path(self, asset: Asset) -> Path:
         path = ensure_allowed(Path(asset.path), self.settings)

@@ -4,6 +4,7 @@ import subprocess
 from pathlib import Path
 
 from audio_prov.config import Settings
+from audio_prov.errors import ToolNotFoundError, TransformError
 from audio_prov.models import TransformPresetInfo, TransformResult
 
 PRESETS: dict[str, dict] = {
@@ -61,7 +62,10 @@ class FfmpegTransformPlugin:
 
     def transform(self, path: Path, preset: str, output_dir: Path) -> TransformResult:
         if preset not in PRESETS:
-            raise ValueError(f"Unknown transform preset: {preset}. Available: {', '.join(PRESETS)}")
+            raise TransformError(
+                f"Unknown transform preset: {preset}",
+                hint=f"Available: {', '.join(PRESETS)}",
+            )
 
         meta = PRESETS[preset]
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -71,11 +75,9 @@ class FfmpegTransformPlugin:
         try:
             subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=180)
         except FileNotFoundError as exc:
-            raise RuntimeError(
-                f"ffmpeg not found at '{self.settings.ffmpeg_path}'. Install ffmpeg."
-            ) from exc
+            raise ToolNotFoundError("ffmpeg", self.settings.ffmpeg_path) from exc
         except subprocess.CalledProcessError as exc:
-            raise RuntimeError(f"ffmpeg transform failed: {exc.stderr}") from exc
+            raise TransformError(f"ffmpeg transform failed: {exc.stderr}") from exc
 
         final_path = intermediate
         if meta.get("decode"):

@@ -7,7 +7,8 @@
         "AUDIO_PROV_ROOT": "/path/to/ai-audio-provenance",
         "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
         "AUDIO_PROV_FFMPEG": "/opt/homebrew/bin/ffmpeg",
-        "AUDIO_PROV_FFPROBE": "/opt/homebrew/bin/ffprobe"
+        "AUDIO_PROV_FFPROBE": "/opt/homebrew/bin/ffprobe",
+        "AUDIO_PROV_C2PATOOL": "/opt/homebrew/bin/c2patool"
       }
     }
   }

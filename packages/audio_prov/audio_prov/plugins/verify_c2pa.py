@@ -16,15 +16,18 @@ class C2paVerifyPlugin:
         self.settings = settings
 
     def verify(self, path: Path) -> VerifyResult:
-        tool = self.settings.c2patool_path
-        if shutil.which(tool) is None:
+        tool = _resolve_tool(self.settings.c2patool_path)
+        if tool is None:
             return VerifyResult(
                 plugin_id="verify.c2pa",
                 plugin_version=self.version,
                 status=VerifyStatus.ABSENT,
                 details={
                     "reason": "c2patool_not_installed",
-                    "hint": f"Install c2patool or set path: {tool}",
+                    "hint": (
+                        "Install c2patool (brew install c2patool) or set "
+                        "AUDIO_PROV_C2PATOOL to the binary path"
+                    ),
                 },
             )
 
@@ -49,6 +52,7 @@ class C2paVerifyPlugin:
         no_manifest_phrases = (
             "no manifest" in lowered
             or "no c2pa" in lowered
+            or "no claim found" in lowered
             or "manifest store not found" in lowered
         )
         if no_manifest_phrases:
@@ -81,3 +85,10 @@ class C2paVerifyPlugin:
             status=VerifyStatus.ABSENT,
             details={"reason": "c2pa_indeterminate", "output_excerpt": output[:2000]},
         )
+
+
+def _resolve_tool(path_str: str) -> str | None:
+    candidate = Path(path_str)
+    if candidate.is_file():
+        return str(candidate)
+    return shutil.which(path_str)

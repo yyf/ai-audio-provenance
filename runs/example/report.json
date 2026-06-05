@@ -3,7 +3,7 @@
   "asset_id": "signed-sidecar",
   "content_hash": "3e40d196d8e45cc2d9d2e2ee2685fa0cd4cc977373922926c133ec4d7642c1ef",
   "pipeline_id": "provenance-analysis@1",
-  "run_id": "deb00d52-25d7-453c-b1e1-0eed4ce7654b",
+  "run_id": "2b9a5aec-63a3-4555-8d0a-90f70f963414",
   "structural": {
     "inspect": {
       "duration_sec": 0.5,
@@ -48,7 +48,22 @@
     ]
   },
   "simulated": null,
-  "inferred": null,
+  "inferred": {
+    "status": "stub",
+    "results": [
+      {
+        "plugin_id": "detect.stub",
+        "plugin_version": "0.1.0",
+        "status": "stub",
+        "signals": [],
+        "details": {
+          "message": "No external AI detector configured. Signals above are tag/hint based only.",
+          "path": "/Users/yyf/Code/ai-audio-provenance/fixtures/signed-sidecar.wav"
+        }
+      }
+    ],
+    "disclaimer": "Inferred signals are not proof of synthetic or human origin. External detectors may be added via DetectPlugin."
+  },
   "user_hints": {},
   "disclaimer": "Analysis reports technical evidence only. Absent credentials do not prove synthetic origin. Demo sidecar manifests use development keys only."
 }

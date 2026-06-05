@@ -5,6 +5,7 @@ import subprocess
 from pathlib import Path
 
 from audio_prov.config import Settings
+from audio_prov.errors import InspectError, ToolNotFoundError
 from audio_prov.models import InspectResult
 from audio_prov.util import sha256_file
 
@@ -30,11 +31,9 @@ class FfprobeInspectPlugin:
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=60)
         except FileNotFoundError as exc:
-            raise RuntimeError(
-                f"ffprobe not found at '{self.settings.ffprobe_path}'. Install ffmpeg."
-            ) from exc
+            raise ToolNotFoundError("ffprobe", self.settings.ffprobe_path) from exc
         except subprocess.CalledProcessError as exc:
-            raise RuntimeError(f"ffprobe failed: {exc.stderr}") from exc
+            raise InspectError(f"ffprobe failed: {exc.stderr}") from exc
 
         data = json.loads(proc.stdout or "{}")
         streams = data.get("streams") or []

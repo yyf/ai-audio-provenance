@@ -11,11 +11,12 @@ REPO = Path(__file__).resolve().parents[1]
 CLAUDE_CONFIG = Path.home() / "Library/Application Support/Claude/claude_desktop_config.json"
 
 
-def _find_binary(name: str) -> str | None:
+def _find_binary(*names: str) -> str | None:
     for prefix in ("/opt/homebrew/bin", "/usr/local/bin"):
-        path = Path(prefix) / name
-        if path.is_file():
-            return str(path)
+        for name in names:
+            path = Path(prefix) / name
+            if path.is_file():
+                return str(path)
     return None
 
 
@@ -33,21 +34,24 @@ def build_audio_server(repo: Path) -> dict:
     }
     ffmpeg = _find_binary("ffmpeg")
     ffprobe = _find_binary("ffprobe")
+    c2patool = _find_binary("c2patool", "c2pa")
     if ffmpeg:
         env["AUDIO_PROV_FFMPEG"] = ffmpeg
     if ffprobe:
         env["AUDIO_PROV_FFPROBE"] = ffprobe
+    if c2patool:
+        env["AUDIO_PROV_C2PATOOL"] = c2patool
 
     return {
         "command": str(mcp_bin),
         "args": [],
         "env": env,
-    }
+    }, env.get("AUDIO_PROV_C2PATOOL")
 
 
 def main() -> int:
     try:
-        audio_server = build_audio_server(REPO)
+        audio_server, c2patool = build_audio_server(REPO)
     except FileNotFoundError as exc:
         print(exc, file=sys.stderr)
         return 1
@@ -64,6 +68,10 @@ def main() -> int:
     CLAUDE_CONFIG.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
     print(f"Updated {CLAUDE_CONFIG}")
     print("Restart Claude Desktop, then copy AI audio into workspace/ and use analyze_ai_audio.")
+    if c2patool:
+        print(f"c2patool: {c2patool}")
+    else:
+        print("c2patool: not found (optional — brew install c2patool)")
     return 0
 
 

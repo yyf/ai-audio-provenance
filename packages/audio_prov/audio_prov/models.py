@@ -65,6 +65,23 @@ class VerifiedBlock(BaseModel):
     results: list[VerifyResult] = Field(default_factory=list)
 
 
+class DetectResult(BaseModel):
+    plugin_id: str
+    plugin_version: str
+    status: str
+    signals: list[dict[str, Any]] = Field(default_factory=list)
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
+class InferredBlock(BaseModel):
+    status: str
+    results: list[DetectResult] = Field(default_factory=list)
+    disclaimer: str = (
+        "Inferred signals are not proof of synthetic or human origin. "
+        "External detectors may be added via DetectPlugin."
+    )
+
+
 class SimulatedBlock(BaseModel):
     preset: str | None = None
     derived_path: str | None = None
@@ -81,7 +98,7 @@ class ProvenanceReport(BaseModel):
     structural: StructuralBlock
     verified: VerifiedBlock
     simulated: SimulatedBlock | None = None
-    inferred: dict[str, Any] | None = None
+    inferred: InferredBlock | None = None
     user_hints: dict[str, Any] = Field(default_factory=dict)
     disclaimer: str = (
         "Analysis reports technical evidence only. Absent credentials do not prove "

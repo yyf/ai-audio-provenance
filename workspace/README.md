@@ -22,6 +22,14 @@ After restarting Claude Desktop (MCP wired via `python scripts/wire_claude_deskt
 
 **3. Optional user hints (declared generator — not verified)**
 
-> Register `my-track.mp3` with user_hints_json `{"generator": "Suno", "synthetic": true}` then run `provenance-analysis@1`.
+> Register `my-track.mp3` with user_hints_json `{"generator": "Suno", "synthetic": true}` then run **`analyze_ai_audio`**.
+
+**4. Batch (all files in workspace)**
+
+> Call **`analyze_workspace`** or from CLI: `audio-prov batch --json`
+
+**5. Demo credentials (dev sidecar for testing verify flow)**
+
+> `sign_demo_sidecar` on a workspace file, then re-run **`analyze_ai_audio`** — Verified should show `valid`.
 
 Only analyze files you have the right to use.

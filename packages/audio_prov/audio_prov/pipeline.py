@@ -11,8 +11,26 @@ import yaml
 from audio_prov.assets import AssetStore
 from audio_prov.audit import write_run_artifacts
 from audio_prov.config import Settings, get_settings
-from audio_prov.models import RunAudit, StepAudit, VerifyResult
+from audio_prov.errors import PipelineNotFoundError
+from audio_prov.models import DetectResult, RunAudit, StepAudit, VerifyResult
 from audio_prov.registry import PipelineContext, PluginRegistry, default_registry
+
+PIPELINE_DESCRIPTIONS: dict[str, str] = {
+    "inspect-only@1": "Structural inspect and metadata tags only.",
+    "provenance-analysis@1": "Inspect, tags, verify credentials, and report.",
+    "real-world-analysis@1": (
+        "Inspect, tags, verify, distribution transcode, re-verify, and report."
+    ),
+}
+
+STEP_DESCRIPTIONS: dict[str, str] = {
+    "inspect.ffprobe": "Extract codec, duration, sample rate, channels, content hash.",
+    "metadata.tags": "Read embedded container tags (ID3, etc.).",
+    "verify.all": "Run all verify plugins (demo sidecar + optional C2PA).",
+    "detect.all": "Run inference plugins (tag hints; external detectors later).",
+    "transform.ffmpeg": "Apply a distribution-style transcode preset.",
+    "report.default": "Assemble structural, verified, simulated, and inferred blocks.",
+}
 
 
 @dataclass
@@ -45,17 +63,38 @@ class PipelineRunner:
         pipeline_id = aliases.get(pipeline_id, pipeline_id)
         path = self.settings.pipelines_path / f"{pipeline_id.split('@')[0]}.yaml"
         if not path.exists():
-            available = sorted(p.stem for p in self.settings.pipelines_path.glob("*.yaml"))
-            raise FileNotFoundError(
-                f"Pipeline not found: {pipeline_id}. "
-                f"Valid ids: inspect-only@1, provenance-analysis@1, real-world-analysis@1. "
-                f"YAML stems: {available}. "
-                "Note: analyze-ai-audio is an MCP prompt/tool name, not a pipeline_id."
+            raise PipelineNotFoundError(
+                pipeline_id,
+                ["inspect-only@1", "provenance-analysis@1", "real-world-analysis@1"],
             )
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
         if data["id"] != pipeline_id:
             raise ValueError(f"Pipeline id mismatch: expected {pipeline_id}, got {data['id']}")
         return PipelineDefinition(id=data["id"], steps=data["steps"])
+
+    def describe_pipeline(self, pipeline_id: str) -> dict[str, Any]:
+        pipeline = self.load_pipeline(pipeline_id)
+        steps = []
+        for step in pipeline.steps:
+            plugin_ref = step["plugin"]
+            entry: dict[str, Any] = {
+                "plugin": plugin_ref,
+                "description": STEP_DESCRIPTIONS.get(plugin_ref, ""),
+            }
+            if params := step.get("params"):
+                entry["params"] = params
+            steps.append(entry)
+        return {
+            "id": pipeline.id,
+            "description": PIPELINE_DESCRIPTIONS.get(pipeline.id, ""),
+            "steps": steps,
+        }
+
+    def list_pipeline_descriptions(self) -> list[dict[str, Any]]:
+        return [
+            self.describe_pipeline(path.stem + "@1")
+            for path in sorted(self.settings.pipelines_path.glob("*.yaml"))
+        ]
 
     def run_all_verifiers(self, path: Path) -> list[VerifyResult]:
         results: list[VerifyResult] = []
@@ -65,6 +104,22 @@ class PipelineRunner:
             except KeyError:
                 continue
             results.append(plugin.verify(path))
+        return results
+
+    def run_all_detectors(self, ctx: PipelineContext) -> list[DetectResult]:
+        results: list[DetectResult] = []
+        for plugin_id in self.settings.detect_plugins:
+            try:
+                plugin = self.registry.get_detect(plugin_id)
+            except KeyError:
+                continue
+            results.append(
+                plugin.detect(
+                    ctx.active_path,
+                    tags=ctx.tag_result,
+                    user_hints=ctx.asset.user_hints,
+                )
+            )
         return results
 
     def verify_asset(self, asset_id: str) -> list[dict[str, Any]]:
@@ -172,6 +227,13 @@ class PipelineRunner:
             elif ctx.transform_result is not None:
                 ctx.verify_after = results
             ctx.verify_results = results
+            step_audit.output = {"results": [r.model_dump() for r in results]}
+            step_audit.plugin_version = "aggregate"
+            return
+
+        if plugin_ref == "detect.all":
+            results = self.run_all_detectors(ctx)
+            ctx.inferred_results = results
             step_audit.output = {"results": [r.model_dump() for r in results]}
             step_audit.plugin_version = "aggregate"
             return

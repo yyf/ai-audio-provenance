@@ -92,6 +92,11 @@ def main() -> None:
             "description": "Compressed MP3 inspect fixture",
             "format_profile": "mp3_128k",
         }
+        catalog["no-creds-mp3"] = {
+            "file": "tone.mp3",
+            "description": "Typical AI export without credentials (MP3)",
+            "format_profile": "mp3_128k",
+        }
 
     (FIXTURES / "catalog.json").write_text(
         __import__("json").dumps(catalog, indent=2),
