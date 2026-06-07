@@ -90,6 +90,19 @@ class DetectPlugin(Protocol):
     ) -> DetectResult: ...
 
 
+class SignPlugin(Protocol):
+    id: str
+    version: str
+
+    def sign(
+        self,
+        path: Path,
+        *,
+        manifest_path: Path | None = None,
+        output_path: Path | None = None,
+    ) -> dict[str, str]: ...
+
+
 class PluginRegistry:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
@@ -99,6 +112,7 @@ class PluginRegistry:
         self._transform: dict[str, TransformPlugin] = {}
         self._report: dict[str, ReportPlugin] = {}
         self._detect: dict[str, DetectPlugin] = {}
+        self._sign: dict[str, SignPlugin] = {}
 
     def register_inspect(self, plugin: InspectPlugin) -> None:
         self._inspect[plugin.id] = plugin
@@ -118,6 +132,9 @@ class PluginRegistry:
     def register_detect(self, plugin: DetectPlugin) -> None:
         self._detect[plugin.id] = plugin
 
+    def register_sign(self, plugin: SignPlugin) -> None:
+        self._sign[plugin.id] = plugin
+
     def get_inspect(self, plugin_id: str) -> InspectPlugin:
         return self._inspect[_short_id(plugin_id)]
 
@@ -136,6 +153,9 @@ class PluginRegistry:
     def get_detect(self, plugin_id: str) -> DetectPlugin:
         return self._detect[_short_id(plugin_id)]
 
+    def get_sign(self, plugin_id: str) -> SignPlugin:
+        return self._sign[_short_id(plugin_id)]
+
     def list_capabilities(self) -> dict[str, Any]:
         return {
             "inspect": {k: v.version for k, v in self._inspect.items()},
@@ -144,6 +164,7 @@ class PluginRegistry:
             "transform": {k: v.version for k, v in self._transform.items()},
             "report": {k: v.version for k, v in self._report.items()},
             "detect": {k: v.version for k, v in self._detect.items()},
+            "sign": {k: v.version for k, v in self._sign.items()},
         }
 
 
@@ -180,9 +201,11 @@ def default_registry(settings: Settings | None = None) -> PluginRegistry:
     from audio_prov.plugins.inspect_ffprobe import FfprobeInspectPlugin
     from audio_prov.plugins.metadata_tags import FfprobeMetadataPlugin
     from audio_prov.plugins.report_default import DefaultReportPlugin
+    from audio_prov.plugins.sign_c2pa import C2paSignPlugin
     from audio_prov.plugins.transform_ffmpeg import FfmpegTransformPlugin
     from audio_prov.plugins.verify_c2pa import C2paVerifyPlugin
     from audio_prov.plugins.verify_demo import DemoVerifyPlugin
+    from audio_prov.plugins.watermark_stub import WatermarkStubDetectPlugin
 
     settings = settings or get_settings()
     registry = PluginRegistry(settings)
@@ -193,4 +216,6 @@ def default_registry(settings: Settings | None = None) -> PluginRegistry:
     registry.register_transform(FfmpegTransformPlugin(settings))
     registry.register_report(DefaultReportPlugin())
     registry.register_detect(StubDetectPlugin())
+    registry.register_detect(WatermarkStubDetectPlugin())
+    registry.register_sign(C2paSignPlugin(settings))
     return registry

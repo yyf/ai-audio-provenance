@@ -62,6 +62,20 @@ class InspectError(ProvenanceError):
         super().__init__(code="inspect_failed", message=message, hint=hint)
 
 
+class BatchNotFoundError(ProvenanceError):
+    def __init__(self, batch_id: str) -> None:
+        super().__init__(
+            code="batch_not_found",
+            message=f"Batch not found: {batch_id}",
+            hint="Start with analyze_workspace_async or audio-prov batch --async.",
+        )
+
+
+class SignError(ProvenanceError):
+    def __init__(self, message: str, hint: str | None = None) -> None:
+        super().__init__(code="sign_failed", message=message, hint=hint)
+
+
 def check_setup(settings: Settings) -> dict[str, Any]:
     """Return prerequisite status for ffmpeg/ffprobe (optional c2patool)."""
     import shutil

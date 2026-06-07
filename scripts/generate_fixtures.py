@@ -39,6 +39,18 @@ def maybe_mp3(src_wav: Path, dst_mp3: Path) -> bool:
     return True
 
 
+def maybe_c2pa_signed(src_wav: Path, dst_wav: Path) -> bool:
+    from audio_prov.config import Settings
+    from audio_prov.plugins.sign_c2pa import sign_c2pa_embed
+    from audio_prov.plugins.verify_c2pa import _resolve_tool
+
+    settings = Settings(project_root=ROOT)
+    if _resolve_tool(settings.c2patool_path) is None:
+        return False
+    sign_c2pa_embed(src_wav, settings, output_path=dst_wav)
+    return True
+
+
 def main() -> None:
     FIXTURES.mkdir(parents=True, exist_ok=True)
 
@@ -96,6 +108,15 @@ def main() -> None:
             "file": "tone.mp3",
             "description": "Typical AI export without credentials (MP3)",
             "format_profile": "mp3_128k",
+        }
+
+    signed_c2pa_wav = FIXTURES / "signed-c2pa.wav"
+    write_tone_wav(signed_c2pa_wav, duration=0.5, freq=440.0)
+    if maybe_c2pa_signed(signed_c2pa_wav, signed_c2pa_wav):
+        catalog["signed-c2pa"] = {
+            "file": "signed-c2pa.wav",
+            "description": "Embedded C2PA manifest (c2patool dev cert)",
+            "format_profile": "pcm_s16le",
         }
 
     (FIXTURES / "catalog.json").write_text(

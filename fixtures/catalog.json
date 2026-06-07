@@ -28,5 +28,10 @@
     "file": "tone.mp3",
     "description": "Typical AI export without credentials (MP3)",
     "format_profile": "mp3_128k"
+  },
+  "signed-c2pa": {
+    "file": "signed-c2pa.wav",
+    "description": "Embedded C2PA manifest (c2patool dev cert)",
+    "format_profile": "pcm_s16le"
   }
 }

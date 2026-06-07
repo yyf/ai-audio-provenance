@@ -27,9 +27,14 @@ class Settings:
     ffmpeg_path: str = "ffmpeg"
     ffprobe_path: str = "ffprobe"
     c2patool_path: str = "c2patool"
+    c2pa_manifest_path: str | None = None
+    c2pa_private_key: str | None = None
+    c2pa_sign_cert: str | None = None
+    c2pa_ta_url: str | None = None
+    c2pa_sign_alg: str = "es256"
     default_transform_preset: str = "aac128"
     verify_plugins: tuple[str, ...] = ("verify.demo", "verify.c2pa")
-    detect_plugins: tuple[str, ...] = ("detect.stub",)
+    detect_plugins: tuple[str, ...] = ("detect.stub", "detect.watermark")
 
     @property
     def workspace_path(self) -> Path:
@@ -54,7 +59,7 @@ class Settings:
 
 def get_settings() -> Settings:
     root = find_project_root()
-    detect_raw = os.getenv("AUDIO_PROV_DETECT_PLUGINS", "detect.stub")
+    detect_raw = os.getenv("AUDIO_PROV_DETECT_PLUGINS", "detect.stub,detect.watermark")
     detect_plugins = tuple(p.strip() for p in detect_raw.split(",") if p.strip())
     return Settings(
         project_root=root,
@@ -65,6 +70,11 @@ def get_settings() -> Settings:
         ffmpeg_path=os.getenv("AUDIO_PROV_FFMPEG", "ffmpeg"),
         ffprobe_path=os.getenv("AUDIO_PROV_FFPROBE", "ffprobe"),
         c2patool_path=os.getenv("AUDIO_PROV_C2PATOOL", "c2patool"),
+        c2pa_manifest_path=os.getenv("AUDIO_PROV_C2PA_MANIFEST") or None,
+        c2pa_private_key=os.getenv("AUDIO_PROV_C2PA_PRIVATE_KEY") or None,
+        c2pa_sign_cert=os.getenv("AUDIO_PROV_C2PA_SIGN_CERT") or None,
+        c2pa_ta_url=os.getenv("AUDIO_PROV_C2PA_TA_URL") or None,
+        c2pa_sign_alg=os.getenv("AUDIO_PROV_C2PA_SIGN_ALG", "es256"),
         default_transform_preset=os.getenv("AUDIO_PROV_DEFAULT_PRESET", "aac128"),
         detect_plugins=detect_plugins,
     )

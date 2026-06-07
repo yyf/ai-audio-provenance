@@ -190,6 +190,7 @@ class PipelineRunner:
             "pipeline_id": pipeline_id,
             "asset_id": asset_id,
             "verified_status": ctx.report.verified.status,
+            "inferred_status": ctx.report.inferred.status if ctx.report.inferred else None,
             "format_profile": ctx.report.structural.inspect.format_profile,
             "report_path": audit.report_path,
             "summary_path": audit.summary_path,

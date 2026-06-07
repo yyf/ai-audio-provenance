@@ -26,10 +26,12 @@ After restarting Claude Desktop (MCP wired via `python scripts/wire_claude_deskt
 
 **4. Batch (all files in workspace)**
 
-> Call **`analyze_workspace`** or from CLI: `audio-prov batch --json`
+> Sync: **`analyze_workspace`** or CLI `audio-prov batch --json`  
+> Large catalogs: **`analyze_workspace_async`** → poll **`get_batch_run(batch_id)`**
 
-**5. Demo credentials (dev sidecar for testing verify flow)**
+**5. Demo credentials**
 
-> `sign_demo_sidecar` on a workspace file, then re-run **`analyze_ai_audio`** — Verified should show `valid`.
+> Sidecar: `sign_demo_sidecar` → re-run **`analyze_ai_audio`** — Verified: `valid`  
+> C2PA: `sign_c2pa_manifest` → re-run **`analyze_ai_audio`** — Verified: `valid` (dev cert)
 
 Only analyze files you have the right to use.

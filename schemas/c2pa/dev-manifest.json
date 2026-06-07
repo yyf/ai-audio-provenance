@@ -1,0 +1,26 @@
+{
+  "claim_generator": "audio-prov/0.1",
+  "assertions": [
+    {
+      "label": "c2pa.actions.v2",
+      "data": {
+        "actions": [
+          {
+            "action": "c2pa.created",
+            "softwareAgent": "audio-prov",
+            "digitalSourceType": "http://cv.iptc.org/newscodes/digitalsourcetype/trainedAlgorithmicMedia"
+          }
+        ],
+        "allActionsIncluded": true
+      }
+    },
+    {
+      "label": "stds.schema-org.CreativeWork",
+      "data": {
+        "@context": "https://schema.org",
+        "@type": "CreativeWork",
+        "author": [{ "@type": "Organization", "name": "audio-prov-demo" }]
+      }
+    }
+  ]
+}

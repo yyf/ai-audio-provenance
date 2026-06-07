@@ -5,8 +5,13 @@ from typing import Any
 
 from audio_prov import __version__ as core_version
 from audio_prov.assets import AssetStore
-from audio_prov.audit import load_run
-from audio_prov.batch import batch_analyze_workspace
+from audio_prov.audit import load_batch, load_run
+from audio_prov.batch import (
+    batch_analyze_workspace,
+    cancel_batch_job,
+    format_batch_status,
+    start_batch_job,
+)
 from audio_prov.config import get_settings
 from audio_prov.errors import check_setup
 from audio_prov.models import Asset
@@ -30,6 +35,7 @@ mcp = FastMCP(
 _settings = get_settings()
 _store = AssetStore(_settings)
 _runner = PipelineRunner(settings=_settings, asset_store=_store)
+_registry = default_registry(_settings)
 
 # MCP prompt names are NOT pipeline IDs — map common mistakes.
 PIPELINE_ALIASES: dict[str, str] = {
@@ -185,7 +191,7 @@ def analyze_workspace(
     preset: str | None = None,
     glob_pattern: str | None = None,
 ) -> str:
-    """Analyze every audio file in workspace/ (batch provenance run)."""
+    """Analyze every audio file in workspace/ (blocking batch provenance run)."""
     return _json(
         batch_analyze_workspace(
             _store,
@@ -195,6 +201,37 @@ def analyze_workspace(
             glob_pattern=glob_pattern,
         )
     )
+
+
+@mcp.tool()
+def analyze_workspace_async(
+    pipeline_id: str = "provenance-analysis@1",
+    preset: str | None = None,
+    glob_pattern: str | None = None,
+) -> str:
+    """Start a background batch job over workspace/; poll with get_batch_run."""
+    return _json(
+        start_batch_job(
+            _store,
+            _runner,
+            pipeline_id=pipeline_id,
+            preset=preset,
+            glob_pattern=glob_pattern,
+        )
+    )
+
+
+@mcp.tool()
+def get_batch_run(batch_id: str) -> str:
+    """Poll async batch status and partial/final results."""
+    payload = load_batch(_settings, batch_id)
+    return _json(format_batch_status(payload, _settings))
+
+
+@mcp.tool()
+def cancel_batch_run(batch_id: str) -> str:
+    """Request cancellation of a running async batch job."""
+    return _json(cancel_batch_job(_settings, batch_id))
 
 
 @mcp.tool()
@@ -212,6 +249,28 @@ def sign_demo_sidecar(filename: str, claims_json: str = '{"synthetic": true}') -
             "claims": claims,
         }
     )
+
+
+@mcp.tool()
+def sign_c2pa_manifest(
+    filename: str,
+    manifest_path: str | None = None,
+    output_path: str | None = None,
+) -> str:
+    """Embed a C2PA manifest in a workspace audio file (development cert by default)."""
+    from pathlib import Path
+
+    asset = _resolve_asset(filename)
+    path = _store.resolve_path(asset)
+    plugin = _registry.get_sign("sign.c2pa")
+    payload = plugin.sign(
+        path,
+        manifest_path=Path(manifest_path) if manifest_path else None,
+        output_path=Path(output_path) if output_path else None,
+    )
+    payload["asset_id"] = asset.asset_id
+    payload["filename"] = filename
+    return _json(payload)
 
 
 @mcp.tool()

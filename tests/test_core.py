@@ -105,8 +105,88 @@ def test_batch_analyze_workspace(settings: Settings) -> None:
     payload = batch_analyze_workspace(store, runner, glob_pattern="batch-*.wav")
     assert payload["count"] == 2
     assert len(payload["results"]) == 2
+    assert payload["batch_id"]
+    assert Path(payload["batch_summary_path"]).is_file()
+    assert Path(payload["batch_json_path"]).is_file()
     asset_ids = {r["asset_id"] for r in payload["results"]}
     assert asset_ids == {"batch-a", "batch-b"}
+
+
+def test_watermark_stub_plugin_direct() -> None:
+    from pathlib import Path
+
+    from audio_prov.plugins.watermark_stub import WatermarkStubDetectPlugin
+
+    plugin = WatermarkStubDetectPlugin()
+    result = plugin.detect(Path("/tmp/x.wav"))
+    assert result.status == "absent"
+    assert result.plugin_id == "detect.watermark"
+    assert not result.signals
+
+
+def test_sign_c2pa_roundtrip(settings: Settings, tmp_path) -> None:
+    import shutil
+
+    from audio_prov.plugins.sign_c2pa import sign_c2pa_embed
+    from audio_prov.plugins.verify_c2pa import C2paVerifyPlugin, _resolve_tool
+
+    if _resolve_tool(settings.c2patool_path) is None:
+        pytest.skip("c2patool not installed")
+
+    src = tmp_path / "sign-me.wav"
+    shutil.copy(settings.fixtures_path / "tone.wav", src)
+    out = tmp_path / "signed.wav"
+    payload = sign_c2pa_embed(src, settings, output_path=out)
+    assert Path(payload["output_path"]).is_file()
+    result = C2paVerifyPlugin(settings).verify(out)
+    assert result.status.value == "valid"
+
+
+def test_provenance_includes_watermark_plugin(runner: PipelineRunner) -> None:
+    import json
+    from pathlib import Path
+
+    audit, _ = runner.run("provenance-analysis@1", "tone-wav")
+    report = json.loads(Path(audit.report_path).read_text(encoding="utf-8"))
+    plugin_ids = {r["plugin_id"] for r in report["inferred"]["results"]}
+    assert "detect.stub" in plugin_ids
+    assert "detect.watermark" in plugin_ids
+
+
+def test_async_batch_job(settings: Settings) -> None:
+    import shutil
+    import time
+
+    from audio_prov.audit import load_batch
+    from audio_prov.batch import format_batch_status, start_batch_job
+
+    for name in ("async-a.wav", "async-b.wav"):
+        shutil.copy(settings.fixtures_path / "tone.wav", settings.workspace_path / name)
+    store = AssetStore(settings)
+    runner = PipelineRunner(settings=settings, asset_store=store)
+    started = start_batch_job(store, runner, glob_pattern="async-*.wav")
+    assert started["async"] is True
+    batch_id = started["batch_id"]
+
+    deadline = time.time() + 30
+    while time.time() < deadline:
+        payload = load_batch(settings, batch_id)
+        if payload["status"] in {"completed", "failed", "cancelled"}:
+            break
+        time.sleep(0.05)
+
+    final = format_batch_status(load_batch(settings, batch_id), settings)
+    assert final["status"] == "completed"
+    assert final["count"] == 2
+
+
+def test_signed_c2pa_fixture(runner: PipelineRunner, settings: Settings) -> None:
+    store = AssetStore(settings)
+    if "signed-c2pa" not in store.load_fixtures_catalog():
+        pytest.skip("signed-c2pa fixture not generated (c2patool missing)")
+    results = runner.verify_asset("signed-c2pa")
+    c2pa = next(r for r in results if r["plugin_id"] == "verify.c2pa")
+    assert c2pa["status"] == "valid"
 
 
 def test_cli_check(settings: Settings) -> None:
