@@ -154,13 +154,18 @@ def main() -> None:
             }
 
     signed_c2pa_wav = FIXTURES / "signed-c2pa.wav"
-    write_tone_wav(signed_c2pa_wav, duration=0.5, freq=440.0)
+    signed_c2pa_entry = {
+        "file": "signed-c2pa.wav",
+        "description": "Embedded C2PA manifest (c2patool dev cert)",
+        "format_profile": "pcm_s16le",
+    }
+    if not signed_c2pa_wav.is_file():
+        write_tone_wav(signed_c2pa_wav, duration=0.5, freq=440.0)
     if maybe_c2pa_signed(signed_c2pa_wav, signed_c2pa_wav):
-        catalog["signed-c2pa"] = {
-            "file": "signed-c2pa.wav",
-            "description": "Embedded C2PA manifest (c2patool dev cert)",
-            "format_profile": "pcm_s16le",
-        }
+        catalog["signed-c2pa"] = signed_c2pa_entry
+    elif signed_c2pa_wav.is_file():
+        # Keep committed fixture when c2patool is unavailable (e.g. CI without network download).
+        catalog["signed-c2pa"] = signed_c2pa_entry
 
     (FIXTURES / "catalog.json").write_text(
         __import__("json").dumps(catalog, indent=2),
