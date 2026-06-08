@@ -181,9 +181,13 @@ def test_async_batch_job(settings: Settings) -> None:
 
 
 def test_signed_c2pa_fixture(runner: PipelineRunner, settings: Settings) -> None:
+    from audio_prov.plugins.verify_c2pa import _resolve_tool
+
     store = AssetStore(settings)
     if "signed-c2pa" not in store.load_fixtures_catalog():
-        pytest.skip("signed-c2pa fixture not generated (c2patool missing)")
+        pytest.skip("signed-c2pa fixture not in catalog")
+    if _resolve_tool(settings.c2patool_path) is None:
+        pytest.skip("c2patool not installed (optional in CI)")
     results = runner.verify_asset("signed-c2pa")
     c2pa = next(r for r in results if r["plugin_id"] == "verify.c2pa")
     assert c2pa["status"] == "valid"
