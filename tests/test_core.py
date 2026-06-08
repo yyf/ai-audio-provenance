@@ -189,6 +189,33 @@ def test_signed_c2pa_fixture(runner: PipelineRunner, settings: Settings) -> None
     assert c2pa["status"] == "valid"
 
 
+def test_transform_aac128_on_mp3_with_cover_art(settings: Settings, tmp_path: Path) -> None:
+    from audio_prov.plugins.transform_ffmpeg import FfmpegTransformPlugin
+
+    store = AssetStore(settings)
+    if "cover-art-mp3" not in store.load_fixtures_catalog():
+        pytest.skip("cover-art-mp3 fixture not generated (ffmpeg missing)")
+
+    plugin = FfmpegTransformPlugin(settings)
+    path = settings.fixtures_path / "cover-art.mp3"
+    result = plugin.transform(path, "aac128", tmp_path)
+    assert Path(result.output_path).is_file()
+    assert result.bytes_out > 0
+
+
+def test_real_world_analysis_on_cover_art_mp3(runner: PipelineRunner, settings: Settings) -> None:
+    store = AssetStore(settings)
+    if "cover-art-mp3" not in store.load_fixtures_catalog():
+        pytest.skip("cover-art-mp3 fixture not generated (ffmpeg missing)")
+
+    audit, summary = runner.run("real-world-analysis@1", "cover-art-mp3")
+    transform_steps = [s for s in audit.steps if s.plugin_id == "transform.ffmpeg"]
+    assert transform_steps
+    assert transform_steps[0].error is None
+    assert summary["verified_status"] in {"valid", "invalid", "absent"}
+    assert audit.report_path is not None
+
+
 def test_cli_check(settings: Settings) -> None:
     from audio_prov.cli import main
 

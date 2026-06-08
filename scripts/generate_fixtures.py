@@ -39,6 +39,42 @@ def maybe_mp3(src_wav: Path, dst_mp3: Path) -> bool:
     return True
 
 
+def maybe_mp3_with_cover_art(src_wav: Path, dst_mp3: Path) -> bool:
+    """MP3 with embedded MJPEG cover art (common on Suno/Udio exports)."""
+    if shutil.which("ffmpeg") is None:
+        return False
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(src_wav),
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=red:s=256x256:d=0.1",
+            "-map",
+            "0:a",
+            "-map",
+            "1:v",
+            "-c:a",
+            "libmp3lame",
+            "-b:a",
+            "128k",
+            "-c:v",
+            "mjpeg",
+            "-disposition:v",
+            "attached_pic",
+            "-frames:v",
+            "1",
+            str(dst_mp3),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    return True
+
+
 def maybe_c2pa_signed(src_wav: Path, dst_wav: Path) -> bool:
     from audio_prov.config import Settings
     from audio_prov.plugins.sign_c2pa import sign_c2pa_embed
@@ -109,6 +145,13 @@ def main() -> None:
             "description": "Typical AI export without credentials (MP3)",
             "format_profile": "mp3_128k",
         }
+        cover_art_mp3 = FIXTURES / "cover-art.mp3"
+        if maybe_mp3_with_cover_art(tone_wav, cover_art_mp3):
+            catalog["cover-art-mp3"] = {
+                "file": "cover-art.mp3",
+                "description": "MP3 with embedded MJPEG cover art (Suno-style)",
+                "format_profile": "mp3_128k",
+            }
 
     signed_c2pa_wav = FIXTURES / "signed-c2pa.wav"
     write_tone_wav(signed_c2pa_wav, duration=0.5, freq=440.0)

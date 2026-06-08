@@ -41,8 +41,17 @@ PRESETS: dict[str, dict] = {
         "models": "Control arm",
         "args": ["-c", "copy"],
         "output_ext": None,
+        "intermediate_ext": None,
         "decode": False,
     },
+}
+
+# Intermediate container must match codec (AAC cannot be written to .mp3).
+_INTERMEDIATE_EXT: dict[str, str] = {
+    "aac128": ".m4a",
+    "aac64": ".m4a",
+    "loudnorm_-14": ".m4a",
+    "mp3_128": ".mp3",
 }
 
 
@@ -69,15 +78,22 @@ class FfmpegTransformPlugin:
 
         meta = PRESETS[preset]
         output_dir.mkdir(parents=True, exist_ok=True)
-        intermediate = output_dir / f"{path.stem}_{preset}_intermediate{path.suffix}"
+        if preset == "copy":
+            intermediate = output_dir / f"{path.stem}_{preset}_intermediate{path.suffix}"
+        else:
+            ext = _INTERMEDIATE_EXT[preset]
+            intermediate = output_dir / f"{path.stem}_{preset}_intermediate{ext}"
 
-        cmd = [self.settings.ffmpeg_path, "-y", "-i", str(path), *meta["args"], str(intermediate)]
+        cmd = _ffmpeg_transform_cmd(self.settings, path, preset, meta["args"], intermediate)
         try:
             subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=180)
         except FileNotFoundError as exc:
             raise ToolNotFoundError("ffmpeg", self.settings.ffmpeg_path) from exc
         except subprocess.CalledProcessError as exc:
-            raise TransformError(f"ffmpeg transform failed: {exc.stderr}") from exc
+            raise TransformError(
+                f"ffmpeg transform failed: {exc.stderr}",
+                hint=_transform_error_hint(exc.stderr or ""),
+            ) from exc
 
         final_path = intermediate
         if meta.get("decode"):
@@ -97,3 +113,30 @@ class FfmpegTransformPlugin:
             preset=preset,
             bytes_out=final_path.stat().st_size,
         )
+
+
+def _ffmpeg_transform_cmd(
+    settings: Settings,
+    path: Path,
+    preset: str,
+    codec_args: list[str],
+    output_path: Path,
+) -> list[str]:
+    """Build ffmpeg command; re-encode presets map first audio stream only."""
+    cmd = [settings.ffmpeg_path, "-y", "-i", str(path)]
+    if preset != "copy":
+        cmd.extend(["-map", "0:a:0"])
+    cmd.extend([*codec_args, str(output_path)])
+    return cmd
+
+
+def _transform_error_hint(stderr: str) -> str | None:
+    lowered = stderr.lower()
+    if "invalid audio stream" in lowered or (
+        "video:" in lowered and "mjpeg" in lowered
+    ):
+        return (
+            "Input may include embedded cover art or a non-audio stream. "
+            "Re-encode presets use -map 0:a:0; if this persists, check ffprobe -show_streams."
+        )
+    return None
